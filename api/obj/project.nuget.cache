@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "boHUqxdHSvs=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Melkhy Wong\\expense-tracker\\api\\api.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Melkhy Wong\\.nuget\\packages\\microsoft.aspnetcore.openapi\\9.0.1\\microsoft.aspnetcore.openapi.9.0.1.nupkg.sha512",
+    "C:\\Users\\Melkhy Wong\\.nuget\\packages\\microsoft.openapi\\1.6.17\\microsoft.openapi.1.6.17.nupkg.sha512"
+  ],
+  "logs": []
+}
