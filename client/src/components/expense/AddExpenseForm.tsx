@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { IExpense } from "@/lib/interface/IExpense";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -79,11 +78,11 @@ export function AddExpenseForm() {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="food">Food</SelectItem>
+                  <SelectItem value="4">Food</SelectItem>
                   <SelectItem value="1">Transportation</SelectItem>
-                  <SelectItem value="entertainment">Entertainment</SelectItem>
-                  <SelectItem value="utilities">Utilities</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="2">Entertainment</SelectItem>
+                  <SelectItem value="3">Utilities</SelectItem>
+                  <SelectItem value="5">Other</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

@@ -12,6 +12,7 @@ import PageNotFound from "./components/common/PageNotFound";
 import SettingsPage from "./components/auth/SettingsPage";
 import VerifyEmailChangePage from "./components/auth/VerifyEmailChangePage";
 import AddExpensePage from "./components/expense/AddExpensePage";
+import ReportPage from "./components/report/ReportPage";
 
 function App() {
   return (
@@ -39,7 +40,9 @@ function App() {
         />
 
         {/* Fallback for unknown routes */}
+
         <Route path="/expenses/add" element={<AddExpensePage />} />
+        <Route path="/reports" element={<ReportPage />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </>

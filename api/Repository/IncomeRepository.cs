@@ -10,6 +10,7 @@ namespace api.Repository
     {
 
         private readonly AppDbContext _context;
+
         private readonly UserManager<ApplicationUser> _userManager;
         public IncomeRepository(AppDbContext context, UserManager<ApplicationUser> userManager)
         {

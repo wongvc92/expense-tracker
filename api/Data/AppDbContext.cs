@@ -6,6 +6,8 @@ namespace api.Data
 {
     public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<ApplicationUser>(options)
     {
+
+        public DbSet<Transaction> Transactions { get; set; }
         public DbSet<Expense> Expenses { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<UserSession> UserSessions { get; set; }
@@ -24,17 +26,30 @@ namespace api.Data
 
             builder.Entity<UserSession>(entity =>
             {
-                entity.HasKey(us => us.Id); // Primary key
-                entity.HasIndex(us => us.SessionKey).IsUnique(); // Unique session key
-                entity.Property(us => us.CreatedAt).HasDefaultValueSql("GETDATE()"); // Default value for CreatedAt
-                entity.Property(us => us.IsRevoked).HasDefaultValue(false); // Default value for IsRevoked
+                entity.HasKey(us => us.Id);
+                entity.HasIndex(us => us.SessionKey).IsUnique();
+                entity.Property(us => us.CreatedAt).HasDefaultValueSql("GETDATE()");
+                entity.Property(us => us.IsRevoked).HasDefaultValue(false);
 
-                // Configure relationship with User entity
-                entity.HasOne<ApplicationUser>() // Foreign key relationship
-                      .WithMany() // No navigation property in User
+                entity.HasOne<ApplicationUser>()
+                      .WithMany()
                       .HasForeignKey(us => us.UserId)
-                      .OnDelete(DeleteBehavior.Cascade); // Cascade delete sessions when user is deleted
+                      .OnDelete(DeleteBehavior.Cascade); // Delete sessions if user is deleted
             });
+
+            // Fix the Transactions Foreign Keys
+            builder.Entity<Transaction>()
+                .HasOne(t => t.Income)
+                .WithMany(i => i.Transactions)
+                .HasForeignKey(t => t.IncomeId)
+                .OnDelete(DeleteBehavior.NoAction); // 👈 Prevents cascading delete conflicts
+
+            builder.Entity<Transaction>()
+                .HasOne(t => t.Expense)
+                .WithMany(e => e.Transactions)
+                .HasForeignKey(t => t.ExpenseId)
+                .OnDelete(DeleteBehavior.NoAction); // 👈 Prevents cascading delete conflicts
         }
+
     }
 }

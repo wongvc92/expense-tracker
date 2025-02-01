@@ -1,10 +1,7 @@
-
-using System.Security.Claims;
 using api.Dtos.income;
 using api.interfaces;
-using api.Models;
+using api.validation;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace api.controllers
@@ -14,13 +11,15 @@ namespace api.controllers
     public class IncomeController : ControllerBase
     {
 
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ITransactionRepository _transactionRepository;
         private readonly IIncomeRepository _incomeRepository;
+        private readonly IUserService _userService;
 
-        public IncomeController(UserManager<ApplicationUser> userManager, IIncomeRepository incomeRepository)
+        public IncomeController(IIncomeRepository incomeRepository, IUserService userService, ITransactionRepository transactionRepository)
         {
-            _userManager = userManager;
             _incomeRepository = incomeRepository;
+            _userService = userService;
+            _transactionRepository = transactionRepository;
         }
 
         [Authorize]
@@ -42,27 +41,22 @@ namespace api.controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized(new { message = "User is not authenticated" });
+            var user = await _userService.GetAuthenticatedUserAsync(User);
+            if (user == null) return NotFound("User not found.");
 
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
+
+            var validationError = IncomeValidator.ValidateAmount(incomeDto.Amount);
+            if (validationError != null) return BadRequest(validationError);
+
+            var createdIncome = await _incomeRepository.AddIncomeAsync(user.Id, incomeDto.Amount, incomeDto.Source);
+
+            if (createdIncome == null) return BadRequest("Failed to add income.");
+
+            await _transactionRepository.AddTransactionAsync(createdIncome.Id, user.Id, createdIncome.Amount, createdIncome.Date, "income");
+            return CreatedAtAction(nameof(GetIncome), new
             {
-                return NotFound(new { message = "User not found." });
-            }
-
-            if (incomeDto.Amount <= 0)
-            {
-                return BadRequest(new { message = "Amount must be greater than 0" });
-            }
-
-            var newIncome = await _incomeRepository.AddIncomeAsync(user.Id, incomeDto.Amount, incomeDto.Source);
-
-            if (newIncome == null)
-                return BadRequest(new { message = "Failed to add income." });
-
-            return CreatedAtAction(nameof(GetIncome), new { id = newIncome.Id }, newIncome);
+                id = createdIncome.Id
+            }, createdIncome);
         }
     }
 }

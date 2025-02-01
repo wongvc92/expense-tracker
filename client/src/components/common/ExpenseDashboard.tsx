@@ -7,6 +7,7 @@ import Modal from "../ui/modal";
 import AddIncomeForm from "../income/AddIncomeForm";
 import { useAddIncomeForm } from "@/hooks/income/useAddIncomeFormModal";
 import { useAuth } from "@/context/auth";
+import TransactionList from "../transaction/TransactionList";
 
 const ExpenseDashboard = () => {
   const navigate = useNavigate();
@@ -64,24 +65,7 @@ const ExpenseDashboard = () => {
           {/* Transactions Tab */}
           <TabsContent value="transactions">
             <div className="space-y-4">
-              <Card>
-                <CardContent className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-lg font-semibold">Groceries</h3>
-                    <p className="text-sm text-muted-foreground">Jan 25, 2025</p>
-                  </div>
-                  <p className="text-lg font-bold">-$50.00</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-lg font-semibold">Salary</h3>
-                    <p className="text-sm text-muted-foreground">Jan 20, 2025</p>
-                  </div>
-                  <p className="text-lg font-bold text-green-500">+$3,000.00</p>
-                </CardContent>
-              </Card>
+              <TransactionList />
             </div>
           </TabsContent>
 

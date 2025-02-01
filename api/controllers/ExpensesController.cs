@@ -1,9 +1,7 @@
-using System.Security.Claims;
 using api.Dtos.expense;
 using api.interfaces;
 using api.Mappers;
-using api.Models;
-using Microsoft.AspNetCore.Identity;
+using api.validation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace api.controllers
@@ -14,13 +12,16 @@ namespace api.controllers
     {
         private readonly IExpenseRepository _expenseRepository;
         private readonly ICategoryRepository _categoryRepository;
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ITransactionRepository _TransactionRepository;
+        private readonly IUserService _userService;
 
-        public ExpensesController(IExpenseRepository expenseRepository, ICategoryRepository categoryRepository, UserManager<ApplicationUser> userManager)
+        public ExpensesController(IExpenseRepository expenseRepository, ICategoryRepository categoryRepository, IUserService userService, ITransactionRepository TransactionRepository)
         {
             _expenseRepository = expenseRepository;
             _categoryRepository = categoryRepository;
-            _userManager = userManager;
+            _userService = userService;
+            _TransactionRepository = TransactionRepository;
+
         }
 
         [HttpGet("{id}")]
@@ -38,35 +39,26 @@ namespace api.controllers
         [HttpPost("create-expense")]
         public async Task<ActionResult<ExpenseResponseDto>> CreateExpense([FromBody] CreateExpenseDto expenseDto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var user = await _userService.GetAuthenticatedUserAsync(User);
+
+            if (user == null) return NotFound("User not found.");
 
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized("User is not authenticated");
-
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                return NotFound(new { message = "User not found." });
-            }
-
-            if (expenseDto.Amount <= 0)
-            {
-                return BadRequest("Amount must be greater than 0");
-            }
+            var validationError = ExpenseValidator.ValidateAmount(expenseDto.Amount);
+            if (validationError != null) return BadRequest(validationError);
 
             var category = await _categoryRepository.GetCategoryByIdAsync(expenseDto.CategoryId);
-            if (category == null)
-            {
-                return BadRequest("Category not found");
-            }
+            if (category == null) return BadRequest("Category not found");
+
 
             var createdExpense = await _expenseRepository.CreateExpenseAsync(user, expenseDto);
 
-            if (createdExpense == null)
-                return BadRequest(new { message = "Insufficient balance or transaction failed" });
+            if (createdExpense == null) return BadRequest("Insufficient balance or transaction failed");
+
+            await _TransactionRepository.AddTransactionAsync(createdExpense.Id, user.Id, expenseDto.Amount, expenseDto.Date, "expense");
+
             return CreatedAtAction(nameof(GetExpense), new { id = createdExpense.Id }, createdExpense.ToExpenseDto());
         }
     }
