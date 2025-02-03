@@ -1,4 +1,5 @@
 using api.Data;
+using api.Dtos;
 using api.Dtos.transaction;
 using api.interfaces;
 using api.Models;
@@ -43,13 +44,51 @@ namespace api.Repository
             await _context.SaveChangesAsync();
         }
 
-        public async Task<List<TransactionResponseDto>> GetAllTransactionsAsync(string userId)
+        public async Task<PaginatedResponse<TransactionResponseDto>> GetAllTransactionsAsync(
+      string userId,
+      int pageNumber,
+      int pageSize,
+      DateTime? dateFrom = null,
+      DateTime? dateTo = null,
+      List<int>? categoryIds = null,
+      string? sortBy = "date", // Default to sorting by date
+      string? sortOrder = "desc" // Default to descending order
+  )
         {
-            return await _context.Transactions
+            IQueryable<Transaction> query = _context.Transactions
                 .Where(t => t.UserId == userId)
                 .Include(t => t.Income)
                 .Include(t => t.Expense)
-                .ThenInclude(e => e!.Category) // Ensure category is included for expenses
+                .ThenInclude(e => e!.Category);
+
+            // ✅ Apply date filtering
+            if (dateFrom.HasValue)
+                query = query.Where(t => t.Date >= dateFrom.Value);
+
+            if (dateTo.HasValue)
+                query = query.Where(t => t.Date <= dateTo.Value);
+
+            // ✅ Apply category filtering
+            if (categoryIds != null && categoryIds.Any())
+                query = query.Where(t => t.Expense != null && categoryIds.Contains(t.Expense.CategoryId));
+
+            // ✅ Apply sorting
+            query = sortBy?.ToLower() switch
+            {
+                "amount" => sortOrder == "asc" ? query.OrderBy(t => t.Amount) : query.OrderByDescending(t => t.Amount),
+                "type" => sortOrder == "asc" ? query.OrderBy(t => t.TransactionType) : query.OrderByDescending(t => t.TransactionType),
+                "category" => sortOrder == "asc" ? query.OrderBy(t => t.Expense!.Category!.Name) : query.OrderByDescending(t => t.Expense!.Category!.Name),
+                _ => sortOrder == "asc" ? query.OrderBy(t => t.Date) : query.OrderByDescending(t => t.Date) // Default to Date sorting
+            };
+
+            // ✅ Get total count after filtering
+            var totalCount = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            // ✅ Apply Pagination
+            var transactions = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .Select(t => new TransactionResponseDto
                 {
                     Id = t.Id,
@@ -82,7 +121,19 @@ namespace api.Repository
                     Date = t.Date
                 })
                 .ToListAsync();
+
+            return new PaginatedResponse<TransactionResponseDto>
+            {
+                Data = transactions,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalPages = totalPages,
+                TotalCount = totalCount
+            };
         }
+
+
+
 
 
 

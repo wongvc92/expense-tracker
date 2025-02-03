@@ -13,6 +13,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { subWeeks } from "date-fns";
 import { Home, PieChart, PlusCircle, Settings } from "lucide-react";
 
 export function AppSidebar() {
@@ -22,6 +23,7 @@ export function AppSidebar() {
     { icon: Home, label: "Dashboard", href: "/" },
     { icon: PlusCircle, label: "Add Expense", href: "/expenses/add" },
     { icon: PieChart, label: "Reports", href: "/reports" },
+    { icon: PieChart, label: "Transaction", href: `/transactions?page=1&limit=5&dateFrom=${subWeeks(new Date(), 2)}&dateTo=${new Date()}` },
     { icon: Settings, label: "Settings", href: "/auth/settings" },
   ];
   return (

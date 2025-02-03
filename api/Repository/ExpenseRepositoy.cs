@@ -32,10 +32,12 @@ namespace api.Repository
                 return null; // Prevent overspending
             using var transaction = await _context.Database.BeginTransactionAsync();
 
+
             try
             {
                 var expense = new Expense
                 {
+                    Description = expenseDto.Description,
                     UserId = user.Id,
                     Amount = expenseDto.Amount,
                     CategoryId = expenseDto.CategoryId,

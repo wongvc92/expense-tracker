@@ -13,6 +13,7 @@ import SettingsPage from "./components/auth/SettingsPage";
 import VerifyEmailChangePage from "./components/auth/VerifyEmailChangePage";
 import AddExpensePage from "./components/expense/AddExpensePage";
 import ReportPage from "./components/report/ReportPage";
+import TransactionPage from "./components/transaction/TransactionPage";
 
 function App() {
   return (
@@ -41,8 +42,24 @@ function App() {
 
         {/* Fallback for unknown routes */}
 
-        <Route path="/expenses/add" element={<AddExpensePage />} />
+        <Route
+          path="/expenses/add"
+          element={
+            <RequireAuth>
+              <AddExpensePage />
+            </RequireAuth>
+          }
+        />
         <Route path="/reports" element={<ReportPage />} />
+        <Route
+          path="/transactions"
+          element={
+            <RequireAuth>
+              <TransactionPage />
+            </RequireAuth>
+          }
+        />
+
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </>

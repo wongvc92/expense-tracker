@@ -33,6 +33,7 @@ export function AddExpenseForm() {
     //   category: values.category,
     //   date: format(values.date, "yyyy-MM-dd"),
     // });
+    console.log("values.date", values.date);
     form.reset();
   }
 
