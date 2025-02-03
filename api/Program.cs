@@ -106,8 +106,8 @@ builder.Services.AddAuthentication(options =>
 .AddCookie()
 .AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
 {
-    options.ClientId = builder.Configuration.GetSection("Google:ClientId").Value!;
-    options.ClientSecret = builder.Configuration.GetSection("Google:ClientSecret").Value!;
+    options.ClientId = builder.Configuration["GOOGLE_OAUTH_CLIENT_ID"]!;
+    options.ClientSecret = builder.Configuration["GOOGLE_OAUTH_CLIENT_SECRET"]!;
     options.CallbackPath = "/signin-google";
     options.Scope.Add("profile"); // Add profile scope
     options.ClaimActions.MapJsonKey("picture", "picture"); // Map the picture claim
