@@ -141,39 +141,13 @@ namespace api.controllers
 
                 if (user != null)
                 {
-                    // Link the Google ID to the existing account
-                    user.GoogleId = googleId;
-                    user.EmailConfirmed = true; // Explicitly set EmailConfirmed to true
-                    user.ProfileImage = profileImage;
-                    var updateResult = await _userManager.UpdateAsync(user);
-
-
-                    if (!updateResult.Succeeded)
-                    {
-                        var firstError = updateResult.Errors.FirstOrDefault()?.Description;
-                        Console.WriteLine($"Failed to update user: {firstError}");
-                        return BadRequest(new { message = firstError ?? "Failed to link Google ID to the user." });
-                    }
+                    var error = await _authService.LinkGoogleAccountToExisingAccount(user, googleId, profileImage);
+                    if (error != null) return BadRequest(new { message = error ?? "Failed to link Google ID to the user." });
                 }
                 else
                 {
-                    // Create a new user
-                    user = new ApplicationUser
-                    {
-                        ProfileImage = profileImage,
-                        UserName = email,
-                        Email = email,
-                        GoogleId = googleId,
-                        EmailConfirmed = true // Automatically confirm email for Google users
-                    };
-
-                    var createResult = await _userManager.CreateAsync(user);
-                    if (!createResult.Succeeded)
-                    {
-                        var firstError = createResult.Errors.FirstOrDefault()?.Description;
-                        Console.WriteLine($"Failed to create user: {firstError}");
-                        return BadRequest(new { message = firstError ?? "Failed to create user." });
-                    }
+                    var error = await _authService.CreateNewAccount(user, googleId, profileImage, email);
+                    return BadRequest(new { message = error ?? "Failed to create user." });
                 }
             }
 
@@ -203,14 +177,12 @@ namespace api.controllers
                 var user = await _userManager.FindByEmailAsync(body.Email);
                 if (user == null)
                 {
-                    Console.WriteLine("Login failed: User not found.");
                     return Unauthorized(new { message = "Invalid credentials (Email)." });
                 }
 
                 // Check if email is confirmed
                 if (!user.EmailConfirmed)
                 {
-                    Console.WriteLine("Login failed: Email not confirmed.");
                     return Unauthorized(new { message = "Email confirmation is required." });
                 }
 
@@ -220,8 +192,6 @@ namespace api.controllers
                     // If a 2FA token is provided, verify it first
                     if (!string.IsNullOrEmpty(body.Token))
                     {
-                        Console.WriteLine($"2FA token provided: {body.Token}");
-
                         var isTokenValid = await _userManager.VerifyTwoFactorTokenAsync(user, "Email", body.Token);
                         if (isTokenValid)
                         {
@@ -289,88 +259,33 @@ namespace api.controllers
 
             if (body.UserName != user.UserName)
             {
-                var existingUsername = await _userManager.FindByNameAsync(body.UserName!);
-                if (existingUsername != null)
-                {
-                    return BadRequest(new { message = $"username with {body.UserName!} already exist" });
-                }
-
-                user.UserName = body.UserName;
-
-                var updateResult = await _userManager.UpdateAsync(user);
-                if (!updateResult.Succeeded)
-                {
-                    return BadRequest(new { message = $"Failed to update user settings. {updateResult.Errors}" });
-                }
+                var error = await _authService.UpdateUsername(body, user);
+                if (error != null) return BadRequest(new { message = error });
                 return Ok(new { message = "username has been updated" });
             }
 
-            if (body.Email != user.Email)
+            if (!string.IsNullOrEmpty(body.Email) && body.Email != user.Email)
             {
-                if (string.IsNullOrEmpty(body.Email))
-                {
-                    return BadRequest(new { message = "New email is required." });
-                }
-                if (await _userManager.FindByEmailAsync(body.Email) != null)
-                {
-                    return BadRequest(new { message = "Email is already in use by another account." });
-                }
-
-                // Set PendingEmail
-                user.PendingEmail = body.Email;
-                var updateResult = await _userManager.UpdateAsync(user);
-
-                if (!updateResult.Succeeded)
-                {
-                    return BadRequest(new { message = "Failed to update user settings." });
-                }
-
+                var error = await _authService.UpdateEmail(body, user);
+                if (error != null) return BadRequest(new { message = error });
                 await _authService.SendChangeEmailEmail(user, body.Email);
-
                 return Ok(new { message = "A confirmation link has been sent to your new email address. Please verify it to update your email." });
             }
 
             if (!string.IsNullOrEmpty(body.NewPassword) && !string.IsNullOrEmpty(body.OldPassword))
             {
-
-                var isOldPasswordValid = await _userManager.CheckPasswordAsync(user, body.OldPassword);
-                if (!isOldPasswordValid)
-                {
-                    return BadRequest(new { message = "Old password is incorrect." });
-                }
-
-                var changePasswordResult = await _userManager.ChangePasswordAsync(user, body.OldPassword, body.NewPassword);
-                if (!changePasswordResult.Succeeded)
-                {
-                    var firstError = changePasswordResult.Errors
-                        .Select(e => e.Description)
-                        .FirstOrDefault();
-                    return BadRequest(new { message = firstError });
-                }
+                var error = await _authService.UpdatePassword(body, user);
+                if (error != null) return BadRequest(new { message = error });
                 return Ok(new { message = "Password updated successfully." });
             }
 
             if (body.TwoFactorEnabled != user.TwoFactorEnabled)
             {
-                if (body.TwoFactorEnabled == true)
-                {
-                    // Enable 2FA for the user
-                    user.TwoFactorEnabled = true;
-                    await _userManager.UpdateAsync(user);
-
-                    return Ok(new { message = "Two-factor authentication enabled successfully" });
-                }
-                else
-                {
-                    // Disable 2FA for the user
-                    user.TwoFactorEnabled = false;
-                    await _userManager.UpdateAsync(user);
-
-                    return Ok(new { message = "Two-factor authentication disabled successfully." });
-                }
+                var successMessage = await _authService.UpdateTwoFactor(body, user);
+                return Ok(new { message = successMessage });
             }
 
-            return Ok(new { message = "ok" });
+            return Ok(new { message = "Settings updated." });
         }
 
         [HttpPost("register")]
@@ -522,8 +437,8 @@ namespace api.controllers
             // Ensure email is not null
             if (string.IsNullOrEmpty(user.Email))
                 return BadRequest(new { message = "User email is invalid or not set." });
-
-            await _authService.SendResetPasswordEmail(user);
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            await _authService.SendResetPasswordEmail(user, token);
             return Ok(new { message = "Password reset link has been sent to your email." });
         }
 
@@ -571,7 +486,7 @@ namespace api.controllers
             return Ok(new { message = "Logged out successfully" });
         }
 
-        
+
         [HttpPost("assign-role")]
         public async Task<IActionResult> AssignRole(string userId, string role)
         {
